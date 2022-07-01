@@ -8,26 +8,55 @@ A cool tool to process and sync all transactions from a custom GQL query.
 
 ## Documentation
 
-### 1. Getting started
+### Getting started
 
 ```
 $ npm install arweave-synchronizer
 ```
 
 ```typescript
-import Synchronizer from 'arweave-synchronizer';
+import Synchronizer, { GQLTagInterface } from 'arweave-synchronizer';
 
-const sync = new Sync(gql_query);
+const sync = new Synchronizer(GQLTagInterface[]);
 
-sync.start();
+sync.on('response', ({txs, txCounter, timestamp, cursor}) => {
+  // process the page of transactions here
+});
+
+sync.start(); // This must be called at the end
 ```
 
-### 2. Listeners
+### Event listeners
 
+> ⚠️ Event listeners must be set __before__ `sync.start()` method is called or it won't work.
+
+In chronological order:
+
+- on `start`:
+```typescript
+sync.on('start', () => console.log(" 🚦 Starting the synchronizer..."));
+```
+
+- on `request`:
+```typescript
+sync.on('request', () => console.log(" 🔄 Requesting transactions, waiting for response..."));
+```
+
+- on `exception`:
+```typescript
+sync.on('exception', (e) => console.log(` ❌ ${e.message}`));
+```
+
+- on `response`:
 ```typescript
 sync.on('response', ({txs, txCounter, timestamp, cursor}) => {
   // process the transactions page 
 });
+```
+
+- on `synchronized`:
+```typescript
+sync.on('synchronized', () => console.log(" ✅ The node has synchronized with the Blockweave."));
 ```
 
 # To do
