@@ -59,6 +59,13 @@ sync.on('response', ({txs, txCounter, timestamp, cursor}) => {
 sync.on('synchronized', () => console.log(" ✅ The node has synchronized with the Blockweave."));
 ```
 
+### Status
+
+You can get the current status:
+```
+console.log(sync.getStatus()) // return "stopped", "syncing" or "synced"
+```
+
 # To do
 
 - Add optional caching that would store the `txCounter` in a flat file so stopping synchronization doesn't require to start over from the beginning

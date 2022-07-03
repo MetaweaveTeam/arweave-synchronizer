@@ -1,16 +1,14 @@
 import EventEmitter from "events";
-import { run, tx } from 'ar-gql';
-import { GQLTagInterface } from "./interfaces";
+import { run } from 'ar-gql';
+import { GQLTagInterface, Status } from "./interfaces";
 import { GQLEdgeInterface } from "ar-gql/dist/faces";
-
-const txN = 100;
-const now = () => Math.floor(Date.now() / 1000);
 
 export { GQLTagInterface };
 
 export default class Sync extends EventEmitter {
   private txTags: GQLTagInterface[];
   private nTxsPerQuery: number;
+  private status: Status = Status.stopped;
 
   constructor(txTags: GQLTagInterface[], nTxsPerQuery = 100) {
     super();
@@ -36,13 +34,14 @@ export default class Sync extends EventEmitter {
       }
     }`;
 
-    // console.log(query);
-    
     const result = await run(query);
     return result.data.transactions.edges;
   }
 
+  getStatus() { return this.status; }
+
   async start() {
+    this.status = Status.syncing;
     this.emit('start');
     let cursor = null, timestamp = 0, txCounter = 0, syncing = true;
     while(syncing){
@@ -65,5 +64,6 @@ export default class Sync extends EventEmitter {
         this.emit('exception', e);
       }
     }
+    this.status = Status.synced;
   }
 }
