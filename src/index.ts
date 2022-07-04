@@ -2,6 +2,7 @@ import EventEmitter from "events";
 import { run } from 'ar-gql';
 import { GQLTagInterface, Status } from "./interfaces";
 import { GQLEdgeInterface } from "ar-gql/dist/faces";
+import { gqlTransactionConnection } from "./utils";
 
 export { GQLTagInterface };
 
@@ -33,15 +34,7 @@ export default class Sync extends EventEmitter {
         first: ${this.nTxsPerQuery}
         tags: ${JSON.stringify(this.txTags).replace(/"([^"]+)":/g, '$1:')}
         sort: HEIGHT_ASC
-      ) {
-        edges {
-          cursor
-          node {
-            id
-            block { timestamp }
-          }
-        }
-      }
+      ) ${gqlTransactionConnection}
     }`;
 
     this.emit('request');
@@ -58,15 +51,7 @@ export default class Sync extends EventEmitter {
         first: 100
         tags: ${JSON.stringify(this.txTags).replace(/"([^"]+)":/g, '$1:')}
         sort: HEIGHT_DESC
-      ) {
-        edges {
-          cursor
-          node {
-            id
-            block { timestamp }
-          }
-        }
-      }
+      ) ${gqlTransactionConnection}
     }`;
 
     this.emit('request');
