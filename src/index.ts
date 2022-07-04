@@ -6,23 +6,31 @@ import { GQLEdgeInterface } from "ar-gql/dist/faces";
 export { GQLTagInterface };
 
 export default class Sync extends EventEmitter {
-  private txTags: GQLTagInterface[];
   private nTxsPerQuery: number;
+  private delay: number;
+  private txTags: GQLTagInterface[];
   private status: Status = Status.stopped;
   private latestTx: GQLEdgeInterface | undefined;
   private txCounter: number = 0;
 
-  constructor(txTags: GQLTagInterface[], nTxsPerQuery = 100) {
+  constructor(txTags: GQLTagInterface[], nTxsPerQuery = 100, delay = 5000) {
     super();
     this.txTags = txTags;
     this.nTxsPerQuery = nTxsPerQuery;
+    this.delay = delay;
   }
 
-  private getTransactions = async (nTxsPerQuery = 100) => {
+  private updateTxPosition = (txs: GQLEdgeInterface[]) => {
+    this.latestTx = txs[txs.length-1];
+    this.txCounter += txs.length;
+    this.emit('response', {txs, txCounter: this.txCounter});
+  }
+
+  private synchronizeTransactions = async () => {
     const query = `{
       transactions(
         ${this.latestTx ? `after: "${this.latestTx.cursor}"` : ''}
-        first: ${nTxsPerQuery}
+        first: ${this.nTxsPerQuery}
         tags: ${JSON.stringify(this.txTags).replace(/"([^"]+)":/g, '$1:')}
         sort: HEIGHT_ASC
       ) {
@@ -36,8 +44,12 @@ export default class Sync extends EventEmitter {
       }
     }`;
 
-    const result = await run(query);
-    return result.data.transactions.edges;
+    this.emit('request');
+    const txs = (await run(query)).data.transactions.edges;
+    this.updateTxPosition(txs);
+    
+    if(txs.length < this.nTxsPerQuery) this.emit('synchronized');
+    else await this.synchronizeTransactions();
   }
 
   private getLatestTransactions = async () => {
@@ -57,44 +69,27 @@ export default class Sync extends EventEmitter {
       }
     }`;
 
+    this.emit('request');
     const result = (await run(query)).data.transactions.edges;
     const latestTxIndex = result.findIndex(e => e.node.id === this.latestTx?.node.id);
     const txs = result.slice(0, latestTxIndex);
 
-    if(txs.length > 0){
-      this.latestTx = txs[txs.length-1];
-      this.txCounter += txs.length;
-      this.emit('response', {txs, txCounter: this.txCounter})
-    }
+    if(txs.length > 0) this.updateTxPosition(txs);
     
-    setTimeout(this.getLatestTransactions, 2000);
+    setTimeout(this.getLatestTransactions, this.delay);
   }
 
   public getStatus = () => this.status;
 
-  async start() {
+  public start = async () => {
     this.status = Status.syncing;
     this.emit('start');
-    let syncing = true;
-    while(syncing){
-      this.emit('request');
-      try{
-        const txs: GQLEdgeInterface[] = await this.getTransactions(this.nTxsPerQuery);
-        
-        this.latestTx = txs[txs.length-1];
-        this.txCounter += txs.length;
-        this.emit('response', {txs, txCounter: this.txCounter});
-
-        if(txs.length < this.nTxsPerQuery) {
-          this.emit('synchronized');
-          syncing = false;
-        }
-      }
-      catch (e) {
-        this.emit('exception', e);
-      }
+    
+    try { 
+      await this.synchronizeTransactions();
+      this.status = Status.synced;
+      await this.getLatestTransactions();
     }
-    this.status = Status.synced;
-    this.getLatestTransactions();
+    catch(e) { this.emit('exception', e); }
   }
 }
