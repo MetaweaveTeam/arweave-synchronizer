@@ -1,10 +1,6 @@
 # Arweave synchronizer node
 
-A cool tool to process and sync all transactions from a custom GQL query.
-
-## Potential usage cases
-
-- Gather metrics of a specific data protocol
+A cool tool to process and sync all transactions from a custom GQL query in order to gather metrics for from a specific data protocol.
 
 ## Documentation
 
@@ -13,20 +9,40 @@ A cool tool to process and sync all transactions from a custom GQL query.
 ```
 $ npm install arweave-synchronizer
 ```
+or
+```
+$ yarn add arweave-synchronizer
+```
+
+### Simple example
 
 ```typescript
-import Synchronizer, { GQLTagInterface } from 'arweave-synchronizer';
+import Synchronizer from 'arweave-synchronizer';
 
-const sync = new Synchronizer(GQLTagInterface[]);
+const sync = new Synchronizer([
+  { name: "Protocol-Name", values: "Account-0.2" },
+  { name: "Signing-Client", values: "ArConnect" }
+]);
 
-sync.on('response', ({txs, txCounter, timestamp, cursor}) => {
+sync.on('response', ({txs, txCounter}) => {
   // process the page of transactions here
 });
 
 sync.start(); // This must be called at the end
 ```
 
-### Event listeners
+### References
+
+#### Constructor arguments
+
+| argument                       | default |
+| ------------------------------ | ------- |
+| Tags array (GQLTagInterface[]) | x       |
+| Txs per query                  | 100     |
+| Delay between queries (ms)     | 5000    |
+
+
+#### Event listeners
 
 > ⚠️ Event listeners must be set __before__ `sync.start()` method is called or it won't work.
 
